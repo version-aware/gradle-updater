@@ -54,7 +54,7 @@ object GradleReferenceDirectory {
   private def executeWrapperTask(referenceDir: Path): Unit = {
     val cmd =
       if (isWindows) Seq("gradlew.bat", "wrapper")
-      else Seq("gradlew", "wrapper")
+      else Seq("./gradlew", "wrapper")
     require(
       process
         .Process(cmd, referenceDir.toFile)

@@ -15,7 +15,8 @@ object Program extends StrictLogging {
                              gitlabPassword: String,
                              filter: Option[Pattern])
   private val cmdParser =
-    new scopt.OptionParser[CommandLineArgs]("docker run --rm versionaware/gradle-gitlab-updater") {
+    new scopt.OptionParser[CommandLineArgs](
+      "docker run --rm versionaware/gradle-gitlab-updater") {
       help("help")
       opt[String]('g', "gitlab-uri")
         .action((v, args) => args.copy(gitlabUri = v))

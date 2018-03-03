@@ -37,6 +37,13 @@ object GradleReferenceDirectory {
         Files.copy(s, t)
       } finally s.close()
     }
+    if (!isWindows) {
+      require(process
+                .Process(Seq("chmod", "+x", "gradlew"), targetDir.toFile)
+                .run()
+                .exitValue() == 0,
+              "Cannot set executable flag for gradlew")
+    }
   }
 
   private def replaceDistributionUrl(propertiesFile: Path,

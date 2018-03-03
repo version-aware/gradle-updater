@@ -18,7 +18,7 @@ apply plugin: 'docker-java'
 apply plugin: 'docker-compose'
 
 group 'com.versionaware'
-version '1.0-SNAPSHOT'
+version = version == 'unspecified' ? 'DEVELOPER-SNAPSHOT' : version
 mainClassName = 'com.versionaware.gradleupdater.Program'
 
 sourceCompatibility = 1.8

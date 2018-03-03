@@ -1,4 +1,4 @@
-# Gradle GitLab Updater [![Build Status](https://travis-ci.org/version-aware/gradle-updater.svg)](https://travis-ci.org/version-aware/gradle-updater)
+# Gradle GitLab Updater [![Build Status](https://travis-ci.org/version-aware/gradle-updater.svg)](https://travis-ci.org/version-aware/gradle-updater) ![Docker Stars](https://img.shields.io/docker/stars/versionaware/gradle-gitlab-updater.svg)
 
 Command-line application that updates [Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html) in GitLab projects.
 

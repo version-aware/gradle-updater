@@ -3,6 +3,7 @@ package com.versionaware.gradleupdater
 import java.nio.file.Files
 import java.util.Base64
 
+import com.typesafe.scalalogging.StrictLogging
 import com.versionaware.gradleupdater.GradleUpdateResult._
 import org.gitlab4j.api.{GitLabApi, GitLabApiException}
 import org.gitlab4j.api.models._
@@ -11,7 +12,8 @@ import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
-    extends AutoCloseable {
+    extends AutoCloseable
+    with StrictLogging {
 
   private val referenceDirectory =
     GradleReferenceDirectory.initialize(gradleVersion)
@@ -23,14 +25,8 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
       if (project.getArchived) ArchivedProject
       else if (!project.getMergeRequestsEnabled) DoesNotSupportMergeRequests
       else if (!haveSufficientAccessLevel(project)) TooLowAccessLevel
-      else if (!gitLabApi.getRepositoryApi
-                 .getTree(project.getId,
-                          "gradle/wrapper",
-                          project.getDefaultBranch)
-                 .asScala
-                 .exists(i =>
-                   i.getType == TreeItem.Type.BLOB && i.getName == "gradle-wrapper.properties")) {
-        GradleNotDetected
+      else if (!isGradleWrapperPresent(project)) {
+        GradleWrapperNotDetected
       } else {
         val propertiesFile = gitLabApi.getRepositoryFileApi.getFile(
           "gradle/wrapper/gradle-wrapper.properties",
@@ -62,6 +58,35 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
       .map(_.getAccessLevel.value.intValue())
       .getOrElse(0) >= AccessLevel.DEVELOPER.value)
   }
+
+  def isGradleWrapperPresent(project: Project): Boolean =
+    try {
+      val rootTree = gitLabApi.getRepositoryApi
+        .getTree(project.getId, null, project.getDefaultBranch)
+        .asScala
+      if (rootTree.exists(i =>
+            i.getType == TreeItem.Type.BLOB && i.getName == "gradlew.bat") &&
+          rootTree.exists(
+            i => i.getType == TreeItem.Type.BLOB && i.getName == "gradlew") &&
+          rootTree.exists(
+            i => i.getType == TreeItem.Type.TREE && i.getName == "gradle")) {
+        val subTree = gitLabApi.getRepositoryApi
+          .getTree(project.getId, "gradle/wrapper", project.getDefaultBranch)
+          .asScala
+        subTree.exists(i =>
+          i.getType == TreeItem.Type.BLOB && i.getName == "gradle-wrapper.properties") && subTree
+          .exists(i =>
+            i.getType == TreeItem.Type.BLOB && i.getName == "gradle-wrapper.jar")
+      } else {
+        false
+      }
+    } catch {
+      case e: GitLabApiException if e.getHttpStatus == 404 =>
+        logger.debug(
+          "GitLab API returned 404 when checking Gradle Wrapper presence",
+          e)
+        false
+    }
 
   def getCommitActions(action: CommitAction.Action): Seq[CommitAction] = Seq(
     new CommitAction()
@@ -131,7 +156,7 @@ object GradleUpdateResult {
   case object TooLowAccessLevel extends GradleUpdateResult
   case class AccessDenied(message: String) extends GradleUpdateResult
   case class Failure(e: Throwable) extends GradleUpdateResult
-  case object GradleNotDetected extends GradleUpdateResult
+  case object GradleWrapperNotDetected extends GradleUpdateResult
   case object UpToDate extends GradleUpdateResult
   case class Updated(mergeRequest: MergeRequest) extends GradleUpdateResult
 }

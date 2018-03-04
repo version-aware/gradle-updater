@@ -4,10 +4,12 @@ import java.net.URL
 import java.nio.file.{FileVisitOption, Files, Path, StandardOpenOption}
 import java.util.Comparator
 
+import com.typesafe.scalalogging.StrictLogging
+
 import scala.collection.JavaConverters._
 import scala.sys.process
 
-object GradleReferenceDirectory {
+object GradleReferenceDirectory extends StrictLogging {
 
   def remove(referenceDirectory: Path): Unit =
     Files
@@ -17,6 +19,7 @@ object GradleReferenceDirectory {
 
   def initialize(gradleVersion: GradleVersion): Path = {
     val d = Files.createTempDirectory("gradlewrapper")
+    logger.debug(s"Initializing Gradle reference directory in $d")
     copySeedFromResources(d)
     replaceDistributionUrl(
       d.resolve("gradle/wrapper/gradle-wrapper.properties"),

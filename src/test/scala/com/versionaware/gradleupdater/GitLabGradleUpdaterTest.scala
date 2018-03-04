@@ -2,13 +2,21 @@ package com.versionaware.gradleupdater
 
 import java.util.Base64
 
-import com.versionaware.gradleupdater.GradleUpdateResult.Updated
+import com.versionaware.gradleupdater.GradleUpdateResult._
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.models.{CommitAction, Project}
 
 import scala.collection.JavaConverters._
 
 class GitLabGradleUpdaterTest extends IntegrationSpec {
+
+  it must "detect missing Gradle Wrapper for empty project" in { f =>
+    val target = new GitLabGradleUpdater(f.api, GradleVersion("4.6"))
+    val emptyProject =
+      f.api.getProjectApi.createProject(new Project().withPath("empty"))
+    target.tryUpdate(emptyProject) shouldBe GradleWrapperNotDetected
+  }
+
   it must "update the project" in { f =>
     val toUpdateVersion = GradleVersion("4.6")
     val target = new GitLabGradleUpdater(f.api, toUpdateVersion)

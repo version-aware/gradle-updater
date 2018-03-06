@@ -1,5 +1,7 @@
 package com.versionaware.gradleupdater
 
+import java.net.URL
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.Base64
 
@@ -11,14 +13,18 @@ import org.gitlab4j.api.models._
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
-class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
+class GitLabGradleUpdater(gitLabApi: GitLabApi,
+                          gradleVersion: GradleVersion,
+                          gradleDistribution: Option[GradleDistributionType])
     extends AutoCloseable
     with StrictLogging {
 
   private val referenceDirectory =
     GradleReferenceDirectory.initialize(gradleVersion)
+  private val distributionUrlProvider = new GradleDistributionUrlProvider(
+    gradleVersion)
 
-  private val branchName = s"Gradle${gradleVersion.version.replace('.', '_')}"
+  private val branchName = s"Gradle_${gradleVersion.version.replace('.', '_')}"
 
   def tryUpdate(project: Project): GradleUpdateResult =
     try {
@@ -32,13 +38,14 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
           "gradle/wrapper/gradle-wrapper.properties",
           project.getId,
           Option(project.getDefaultBranch).getOrElse("master"))
-        val expectedLine =
-          s"distributionUrl=${gradleVersion.downloadUrl.toString.replace(":", "\\:")}"
-        if (new String(Base64.getDecoder.decode(propertiesFile.getContent)).lines
-              .contains(expectedLine)) {
-          UpToDate
-        } else {
-          Updated(performUpdate(project))
+        extractDistributionUrl(propertiesFile) match {
+          case Some(currentDistributionUrl) =>
+            val desiredType = gradleDistribution.getOrElse(
+              GradleDistributionUrlProvider.getType(currentDistributionUrl))
+            val desiredUrl = distributionUrlProvider.get(desiredType)
+            if (desiredUrl.equals(currentDistributionUrl)) UpToDate
+            else Updated(performUpdate(project, desiredType))
+          case None => CannotFindDistributionUrl
         }
       }
     } catch {
@@ -46,6 +53,13 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
         AccessDenied(e.getMessage)
       case NonFatal(e) => Failure(e)
     }
+
+  private def extractDistributionUrl(
+      propertiesFile: RepositoryFile): Option[URL] =
+    new String(Base64.getDecoder.decode(propertiesFile.getContent)).lines
+      .find(_.startsWith("distributionUrl="))
+      .map(_.substring("distributionUrl=".length).replace("\\:", ":"))
+      .map(new URL(_))
 
   def haveSufficientAccessLevel(p: Project): Boolean = {
     gitLabApi.getUserApi.getCurrentUser.getIsAdmin ||
@@ -88,7 +102,8 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
         false
     }
 
-  def getCommitActions(action: CommitAction.Action): Seq[CommitAction] = Seq(
+  def getCommitActions(distributionType: GradleDistributionType,
+                       action: CommitAction.Action): Seq[CommitAction] = Seq(
     new CommitAction()
       .withAction(action)
       .withFilePath("gradlew")
@@ -116,16 +131,30 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
       .withAction(action)
       .withFilePath("gradle/wrapper/gradle-wrapper.properties")
       .withEncoding(CommitAction.Encoding.BASE64)
-      .withContent(
-        Base64.getEncoder.encodeToString(
-          Files.readAllBytes(
-            referenceDirectory
-              .resolve("gradle")
-              .resolve("wrapper")
-              .resolve("gradle-wrapper.properties"))))
+      .withContent(Base64.getEncoder.encodeToString(replaceDistributionUrl(
+        Files.readAllBytes(referenceDirectory
+          .resolve("gradle")
+          .resolve("wrapper")
+          .resolve("gradle-wrapper.properties")),
+        distributionUrlProvider.get(distributionType)
+      )))
   )
 
-  private def performUpdate(project: Project): MergeRequest = {
+  private def replaceDistributionUrl(bytes: Array[Byte],
+                                     url: URL): Array[Byte] = {
+    new String(bytes).lines
+      .map(l => {
+        if (l.startsWith("distributionUrl="))
+          s"distributionUrl=${url.toString.replace(":", "\\:")}"
+        else l
+      })
+      .mkString("\n")
+      .getBytes(StandardCharsets.UTF_8)
+  }
+
+  private def performUpdate(
+      project: Project,
+      distributionType: GradleDistributionType): MergeRequest = {
     gitLabApi.getCommitsApi.createCommit(
       project.getId,
       branchName,
@@ -133,7 +162,7 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi, gradleVersion: GradleVersion)
       Option(project.getDefaultBranch).getOrElse("master"),
       null,
       "Gradle Updater",
-      getCommitActions(CommitAction.Action.UPDATE).asJava
+      getCommitActions(distributionType, CommitAction.Action.UPDATE).asJava
     )
     gitLabApi.getMergeRequestApi.createMergeRequest(
       project.getId,
@@ -157,6 +186,7 @@ object GradleUpdateResult {
   case class AccessDenied(message: String) extends GradleUpdateResult
   case class Failure(e: Throwable) extends GradleUpdateResult
   case object GradleWrapperNotDetected extends GradleUpdateResult
+  case object CannotFindDistributionUrl extends GradleUpdateResult
   case object UpToDate extends GradleUpdateResult
   case class Updated(mergeRequest: MergeRequest) extends GradleUpdateResult
 }

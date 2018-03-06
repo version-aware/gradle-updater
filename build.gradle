@@ -54,8 +54,8 @@ sourceSets {
 dockerJava {
     image = "versionaware/gradle-gitlab-updater:$version"
     alternativeImages = ['versionaware/gradle-gitlab-updater:latest']
-    username = System.getenv('DOCKER_USERNAME')
-    password = System.getenv('DOCKER_PASSWORD')
+    username = System.getenv('DOCKER_USERNAME') ?: ''
+    password = System.getenv('DOCKER_PASSWORD') ?: ''
 }
 
 dockerCompose.isRequiredBy(test)

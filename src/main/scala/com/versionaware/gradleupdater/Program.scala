@@ -10,6 +10,7 @@ import scala.util.control.NonFatal
 
 object Program extends StrictLogging {
   case class CommandLineArgs(gradleVersion: Option[String],
+                             gradleDistribution: Option[GradleDistributionType],
                              gitlabUri: String,
                              gitlabUsername: String,
                              gitlabPassword: String,
@@ -17,6 +18,13 @@ object Program extends StrictLogging {
   private val cmdParser =
     new scopt.OptionParser[CommandLineArgs](
       "docker run --rm versionaware/gradle-gitlab-updater") {
+
+      head("Gradle GitLab Updater by VersionAware")
+      head("Iterates all the projects accessible for the specified user, with optional filter.")
+      head("If outdated Gradle Wrapper is detected then it creates a new Merge Request with the specified Gradle Wrapper version.")
+      head("The user must have at least Developer permission to create a new MR.")
+      head("")
+
       help("help")
       opt[String]('g', "gitlab-uri")
         .action((v, args) => args.copy(gitlabUri = v))
@@ -36,6 +44,17 @@ object Program extends StrictLogging {
       opt[String]('v', "gradle-version")
         .action((v, args) => args.copy(gradleVersion = Some(v)))
         .text("Gradle version to update to. If not specified then the latest stable version is used.")
+      opt[String]('d', "gradle-distribution")
+        .action((v, args) =>
+          args.copy(gradleDistribution = Some(parseGradleDitribution(v))))
+        .text("Gradle distribution to use - 'all' or 'bin'. If not specified then the distribution is not changed.")
+    }
+
+  private def parseGradleDitribution(v: String): GradleDistributionType =
+    v.toLowerCase.trim match {
+      case "all" => GradleDistributionType.All
+      case "bin" => GradleDistributionType.Bin
+      case _     => sys.error(s"Unknown Gradle distribution type: '$v'")
     }
 
   def main(args: Array[String]): Unit = {
@@ -43,7 +62,7 @@ object Program extends StrictLogging {
       cmdParser.showUsage()
     } else {
       val cmdArgs =
-        cmdParser.parse(args, CommandLineArgs(None, "", "", "", None)) match {
+        cmdParser.parse(args, CommandLineArgs(None, None, "", "", "", None)) match {
           case Some(ca) => ca
           case None     => sys.error("Invalid arguments")
         }
@@ -54,7 +73,9 @@ object Program extends StrictLogging {
       val gitLabApi = GitLabApi.login(cmdArgs.gitlabUri,
                                       cmdArgs.gitlabUsername,
                                       cmdArgs.gitlabPassword)
-      val gradleUpdater = new GitLabGradleUpdater(gitLabApi, gradleVersion)
+      val gradleUpdater = new GitLabGradleUpdater(gitLabApi,
+                                                  gradleVersion,
+                                                  cmdArgs.gradleDistribution)
       try {
         gitLabApi.getProjectApi
           .getProjects(0, Integer.MAX_VALUE)

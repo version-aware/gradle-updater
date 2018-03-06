@@ -23,7 +23,7 @@ object GradleReferenceDirectory extends StrictLogging {
     copySeedFromResources(d)
     replaceDistributionUrl(
       d.resolve("gradle/wrapper/gradle-wrapper.properties"),
-      gradleVersion.downloadUrl)
+      GradleDistributionUrlProvider(gradleVersion).bin)
     executeWrapperTask(d)
     d
   }

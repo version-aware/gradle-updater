@@ -4,6 +4,7 @@ Command-line application that updates [Gradle Wrapper](https://docs.gradle.org/c
 
 It iterates all the projects accessible for the specified user, with optional filter.
  If outdated Gradle Wrapper is detected then it creates a new Merge Request with the specified Gradle Wrapper version.
+ The user must have at least [Developer permission](https://docs.gitlab.com/ee/user/permissions.html) to create a new MR.
 
 It's distributed as Linux Docker image and so can be used easily:
 ```cmd
@@ -20,4 +21,6 @@ Usage: docker run --rm versionaware/gradle-gitlab-updater [options]
   -f, --filter <value>     Regular expression that must match for project ID, like 'my-group/my-project'.
   -v, --gradle-version <value>
                            Gradle version to update to. If not specified then the latest stable version is used.
+  -d, --gradle-distribution <value>
+                           Gradle distribution to use - 'all' or 'bin'. If not specified then the distribution is not changed.
 ```

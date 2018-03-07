@@ -21,11 +21,34 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
 
   it must "do nothing for up-to-date project" in { f =>
     val toUpdateVersion = GradleVersion("4.6")
-    val target = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+    val distributionType = GradleDistributionType.Bin
+    val target =
+      new GitLabGradleUpdater(f.api, toUpdateVersion, Some(distributionType))
     try {
-      val distributionType = GradleDistributionType.Bin
       val p = createProject(f.api, toUpdateVersion, distributionType)
       target.tryUpdate(p) shouldBe UpToDate
+    } finally target.close()
+  }
+
+  // GitLabApi doesn't support archiving
+  ignore must "detect archived project" in { f =>
+    val toUpdateVersion = GradleVersion("4.6")
+    val target = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+    try {
+      val p = f.api.getProjectApi
+        .createProject(new Project().withPath("test-project"))
+      // f.api.getProjectApi.archiveProject(p.getId)
+      target.tryUpdate(p) shouldBe ArchivedProject
+    } finally target.close()
+  }
+
+  it must "detect project without merge requests" in { f =>
+    val toUpdateVersion = GradleVersion("4.6")
+    val target = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+    try {
+      val p = f.api.getProjectApi.createProject(
+        new Project().withPath("test-project").withMergeRequestsEnabled(false))
+      target.tryUpdate(p) shouldBe DoesNotSupportMergeRequests
     } finally target.close()
   }
 

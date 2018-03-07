@@ -20,9 +20,12 @@ object Program extends StrictLogging {
       "docker run --rm versionaware/gradle-gitlab-updater") {
 
       head("Gradle GitLab Updater by VersionAware")
-      head("Iterates all the projects accessible for the specified user, with optional filter.")
-      head("If outdated Gradle Wrapper is detected then it creates a new Merge Request with the specified Gradle Wrapper version.")
-      head("The user must have at least Developer permission to create a new MR.")
+      head(
+        "Iterates all the projects accessible for the specified user, with optional filter.")
+      head(
+        "If outdated Gradle Wrapper is detected then it creates a new Merge Request with the specified Gradle Wrapper version.")
+      head(
+        "The user must have at least Developer permission to create a new MR.")
       head("")
 
       help("help")

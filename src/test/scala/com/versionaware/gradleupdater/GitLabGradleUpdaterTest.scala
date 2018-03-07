@@ -19,12 +19,22 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
     } finally target.close()
   }
 
+  it must "do nothing for up-to-date project" in { f =>
+    val toUpdateVersion = GradleVersion("4.6")
+    val target = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+    try {
+      val distributionType = GradleDistributionType.Bin
+      val p = createProject(f.api, toUpdateVersion, distributionType)
+      target.tryUpdate(p) shouldBe UpToDate
+    } finally target.close()
+  }
+
   it must "update the project" in { f =>
     val toUpdateVersion = GradleVersion("4.6")
     val target = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
     try {
       val distributionType = GradleDistributionType.Bin
-      val p = createOutdatedProject(f.api, distributionType)
+      val p = createProject(f.api, GradleVersion("4.5.1"), distributionType)
       val actual = target.tryUpdate(p) match {
         case u: Updated => u
         case other      => sys.error(s"Updated result expected but $other found")
@@ -41,11 +51,12 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
     } finally target.close()
   }
 
-  private def createOutdatedProject(
+  private def createProject(
       api: GitLabApi,
+      version: GradleVersion,
       distributionType: GradleDistributionType): Project = {
-    val version = GradleVersion("4.5.1")
-    val p = api.getProjectApi.createProject(new Project().withPath("outdated"))
+    val p =
+      api.getProjectApi.createProject(new Project().withPath("test-project"))
     val updater = new GitLabGradleUpdater(api, version, None)
     try {
       api.getCommitsApi.createCommit(

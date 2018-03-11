@@ -12,8 +12,9 @@ object Program extends StrictLogging {
   case class CommandLineArgs(gradleVersion: Option[String],
                              gradleDistribution: Option[GradleDistributionType],
                              gitlabUri: String,
-                             gitlabUsername: String,
-                             gitlabPassword: String,
+                             gitlabUsername: Option[String],
+                             gitlabPassword: Option[String],
+                             gitLabPrivateToken: Option[String],
                              filter: Option[Pattern])
   private val cmdParser =
     new scopt.OptionParser[CommandLineArgs](
@@ -34,13 +35,14 @@ object Program extends StrictLogging {
         .text("GitLab Uri, like http://mygitlab.com")
         .required()
       opt[String]('u', "gitlab-username")
-        .action((v, args) => args.copy(gitlabUsername = v))
+        .action((v, args) => args.copy(gitlabUsername = Some(v)))
         .text("Username to access GitLab.")
-        .required()
       opt[String]('p', "gitlab-password")
-        .action((v, args) => args.copy(gitlabPassword = v))
+        .action((v, args) => args.copy(gitlabPassword = Some(v)))
         .text("Password to access GitLab.")
-        .required()
+      opt[String]('t', "gitlab-token")
+        .action((v, args) => args.copy(gitLabPrivateToken = Some(v)))
+        .text("Private token to access GitLab.")
       opt[String]('f', "filter")
         .action((v, args) => args.copy(filter = Some(Pattern.compile(v))))
         .text("Regular expression that must match for project ID, like 'my-group/my-project'.")
@@ -65,7 +67,9 @@ object Program extends StrictLogging {
       cmdParser.showUsage()
     } else {
       val cmdArgs =
-        cmdParser.parse(args, CommandLineArgs(None, None, "", "", "", None)) match {
+        cmdParser.parse(
+          args,
+          CommandLineArgs(None, None, "", None, None, None, None)) match {
           case Some(ca) => ca
           case None     => sys.error("Invalid arguments")
         }
@@ -73,9 +77,14 @@ object Program extends StrictLogging {
         case Some(gv) => GradleVersion(gv)
         case None     => GradleCurrentVersion.get()
       }
-      val gitLabApi = GitLabApi.login(cmdArgs.gitlabUri,
-                                      cmdArgs.gitlabUsername,
-                                      cmdArgs.gitlabPassword)
+      val gitLabApi = cmdArgs.gitLabPrivateToken match {
+        case Some(privateToken) =>
+          new GitLabApi(cmdArgs.gitlabUri, privateToken)
+        case None =>
+          GitLabApi.login(cmdArgs.gitlabUri,
+                          cmdArgs.gitlabUsername.getOrElse(""),
+                          cmdArgs.gitlabPassword.getOrElse(""))
+      }
       val gradleUpdater = new GitLabGradleUpdater(gitLabApi,
                                                   gradleVersion,
                                                   cmdArgs.gradleDistribution)

@@ -170,7 +170,11 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
       Option(project.getDefaultBranch).getOrElse("master"),
       s"Update Gradle to ${gradleVersion.version}",
       s"Gradle updated to ${gradleVersion.version}, see [release notes](${gradleVersion.releaseNotes}).",
-      null, null, null, null, true
+      null,
+      null,
+      null,
+      null,
+      true
     )
   }
 

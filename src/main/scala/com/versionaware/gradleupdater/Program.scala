@@ -9,13 +9,16 @@ import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 object Program extends StrictLogging {
-  case class CommandLineArgs(gradleVersion: Option[String],
-                             gradleDistribution: Option[GradleDistributionType],
-                             gitlabUri: String,
-                             gitlabUsername: Option[String],
-                             gitlabPassword: Option[String],
-                             gitLabPrivateToken: Option[String],
-                             filter: Option[Pattern])
+  case class CommandLineArgs(
+      gradleVersion: Option[String] = None,
+      gradleDistribution: Option[GradleDistributionType] = None,
+      gitlabUri: String = "",
+      gitlabUsername: Option[String] = None,
+      gitlabPassword: Option[String] = None,
+      gitlabPasswordFromStdIn: Boolean = false,
+      gitlabPrivateToken: Option[String] = None,
+      gitlabPrivateTokenFromStdIn: Boolean = false,
+      filter: Option[Pattern] = None)
   private val cmdParser =
     new scopt.OptionParser[CommandLineArgs](
       "docker run --rm versionaware/gradle-gitlab-updater") {
@@ -40,9 +43,15 @@ object Program extends StrictLogging {
       opt[String]('p', "gitlab-password")
         .action((v, args) => args.copy(gitlabPassword = Some(v)))
         .text("Password to access GitLab.")
+      opt[Unit]("gitlab-password-stdin")
+        .action((v, args) => args.copy(gitlabPasswordFromStdIn = true))
+        .text("Password to access GitLab will be read from stdin.")
       opt[String]('t', "gitlab-token")
-        .action((v, args) => args.copy(gitLabPrivateToken = Some(v)))
+        .action((v, args) => args.copy(gitlabPrivateToken = Some(v)))
         .text("Private token to access GitLab.")
+      opt[Unit]("gitlab-token-stdin")
+        .action((v, args) => args.copy(gitlabPrivateTokenFromStdIn = true))
+        .text("Private token to access GitLab will be read from stdin.")
       opt[String]('f', "filter")
         .action((v, args) => args.copy(filter = Some(Pattern.compile(v))))
         .text("Regular expression that must match for project ID, like 'my-group/my-project'.")
@@ -67,9 +76,7 @@ object Program extends StrictLogging {
       cmdParser.showUsage()
     } else {
       val cmdArgs =
-        cmdParser.parse(
-          args,
-          CommandLineArgs(None, None, "", None, None, None, None)) match {
+        cmdParser.parse(args, CommandLineArgs()) match {
           case Some(ca) => ca
           case None     => sys.error("Invalid arguments")
         }
@@ -77,14 +84,7 @@ object Program extends StrictLogging {
         case Some(gv) => GradleVersion(gv)
         case None     => GradleCurrentVersion.get()
       }
-      val gitLabApi = cmdArgs.gitLabPrivateToken match {
-        case Some(privateToken) =>
-          new GitLabApi(cmdArgs.gitlabUri, privateToken)
-        case None =>
-          GitLabApi.login(cmdArgs.gitlabUri,
-                          cmdArgs.gitlabUsername.getOrElse(""),
-                          cmdArgs.gitlabPassword.getOrElse(""))
-      }
+      val gitLabApi = createGitLabApi(cmdArgs)
       val gradleUpdater = new GitLabGradleUpdater(gitLabApi,
                                                   gradleVersion,
                                                   cmdArgs.gradleDistribution)
@@ -110,4 +110,23 @@ object Program extends StrictLogging {
       }
     }
   }
+
+  private def createGitLabApi(cmdArgs: CommandLineArgs): GitLabApi =
+    // TODO: Use SecureString after the support will be added to gitlab4j library
+    if (cmdArgs.gitlabPrivateTokenFromStdIn) {
+      new GitLabApi(cmdArgs.gitlabUri,
+                    new String(System.console().readPassword()))
+    } else if (cmdArgs.gitlabPasswordFromStdIn) {
+      GitLabApi.login(cmdArgs.gitlabUri,
+                      cmdArgs.gitlabUsername.getOrElse(""),
+                      new String(System.console().readPassword()))
+    } else
+      cmdArgs.gitlabPrivateToken match {
+        case Some(privateToken) =>
+          new GitLabApi(cmdArgs.gitlabUri, privateToken)
+        case None =>
+          GitLabApi.login(cmdArgs.gitlabUri,
+                          cmdArgs.gitlabUsername.getOrElse(""),
+                          cmdArgs.gitlabPassword.getOrElse(""))
+      }
 }

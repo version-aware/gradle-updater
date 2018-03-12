@@ -61,8 +61,7 @@ dockerJava {
 dockerCompose.isRequiredBy(test)
 
 wartremover {
-    warningWarts.remove('NonUnitStatements')
-    warningWarts.remove('Null')
+    warningWarts.removeAll(['DefaultArguments', 'NonUnitStatements', 'Null'])
 }
 
 test {

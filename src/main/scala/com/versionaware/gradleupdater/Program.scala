@@ -117,16 +117,16 @@ object Program extends StrictLogging {
       new GitLabApi(cmdArgs.gitlabUri,
                     new String(System.console().readPassword()))
     } else if (cmdArgs.gitlabPasswordFromStdIn) {
-      GitLabApi.login(cmdArgs.gitlabUri,
-                      cmdArgs.gitlabUsername.getOrElse(""),
-                      new String(System.console().readPassword()))
+      GitLabApi.oauth2Login(cmdArgs.gitlabUri,
+                            cmdArgs.gitlabUsername.getOrElse(""),
+                            new String(System.console().readPassword()))
     } else
       cmdArgs.gitlabPrivateToken match {
         case Some(privateToken) =>
           new GitLabApi(cmdArgs.gitlabUri, privateToken)
         case None =>
-          GitLabApi.login(cmdArgs.gitlabUri,
-                          cmdArgs.gitlabUsername.getOrElse(""),
-                          cmdArgs.gitlabPassword.getOrElse(""))
+          GitLabApi.oauth2Login(cmdArgs.gitlabUri,
+                                cmdArgs.gitlabUsername.getOrElse(""),
+                                cmdArgs.gitlabPassword.getOrElse(""))
       }
 }

@@ -18,6 +18,10 @@ Usage: docker run --rm versionaware/gradle-gitlab-updater [options]
                            Username to access GitLab.
   -p, --gitlab-password <value>
                            Password to access GitLab.
+  --gitlab-password-stdin  Password to access GitLab will be read from stdin.
+  -t, --gitlab-token <value>
+                           Private token to access GitLab.
+  --gitlab-token-stdin     Private token to access GitLab will be read from stdin.
   -f, --filter <value>     Regular expression that must match for project ID, like 'my-group/my-project'.
   -v, --gradle-version <value>
                            Gradle version to update to. If not specified then the latest stable version is used.

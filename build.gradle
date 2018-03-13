@@ -29,7 +29,7 @@ repositories {
 
 dependencies {
     compile 'org.scala-lang:scala-library:2.12.4'
-    compile 'com.typesafe.scala-logging:scala-logging_2.12:3.7.2'
+    compile 'com.typesafe.scala-logging:scala-logging_2.12:3.8.0'
     compile 'ch.qos.logback:logback-classic:1.2.3'
     compile 'com.github.scopt:scopt_2.12:3.7.0'
 
@@ -61,7 +61,7 @@ dockerJava {
 dockerCompose.isRequiredBy(test)
 
 wartremover {
-    warningWarts.removeAll(['DefaultArguments', 'NonUnitStatements', 'Null'])
+    warningWarts.removeAll(['DefaultArguments', 'NonUnitStatements', 'Null', 'AsInstanceOf'])
 }
 
 test {

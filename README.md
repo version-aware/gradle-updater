@@ -27,4 +27,5 @@ Usage: docker run --rm versionaware/gradle-gitlab-updater [options]
                            Gradle version to update to. If not specified then the latest stable version is used.
   -d, --gradle-distribution <value>
                            Gradle distribution to use - 'all' or 'bin'. If not specified then the distribution is not changed.
+  -l, --log-level <value>  Log-level to use, default is INFO. Other values: OFF, ERROR, WARN, DEBUG, TRACE, ALL
 ```

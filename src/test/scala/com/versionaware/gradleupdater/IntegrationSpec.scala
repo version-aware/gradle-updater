@@ -6,9 +6,7 @@ import org.scalatest.{Matchers, Outcome}
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-abstract class IntegrationSpec
-    extends org.scalatest.fixture.FlatSpec
-    with Matchers {
+abstract class IntegrationSpec extends org.scalatest.fixture.FlatSpec with Matchers {
   val GitLabUsername = "root"
   val GitLabPassword = "12345678"
   val GitLabUri =

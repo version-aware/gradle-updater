@@ -21,9 +21,8 @@ object GradleReferenceDirectory extends StrictLogging {
     val d = Files.createTempDirectory("gradlewrapper")
     logger.debug(s"Initializing Gradle reference directory in $d")
     copySeedFromResources(d)
-    replaceDistributionUrl(
-      d.resolve("gradle/wrapper/gradle-wrapper.properties"),
-      GradleDistributionUrlProvider(gradleVersion).bin)
+    replaceDistributionUrl(d.resolve("gradle/wrapper/gradle-wrapper.properties"),
+                           GradleDistributionUrlProvider(gradleVersion).bin)
     executeWrapperTask(d)
     d
   }
@@ -49,16 +48,13 @@ object GradleReferenceDirectory extends StrictLogging {
     }
   }
 
-  private def replaceDistributionUrl(propertiesFile: Path,
-                                     distributionUrl: URL): Unit = {
+  private def replaceDistributionUrl(propertiesFile: Path, distributionUrl: URL): Unit = {
     val newLines = Files.readAllLines(propertiesFile).asScala.map {
       case l if l.startsWith("distributionUrl=") =>
         s"distributionUrl=${distributionUrl.toString.replace(":", "\\:")}"
       case l => l
     }
-    Files.write(propertiesFile,
-                newLines.asJava,
-                StandardOpenOption.TRUNCATE_EXISTING)
+    Files.write(propertiesFile, newLines.asJava, StandardOpenOption.TRUNCATE_EXISTING)
   }
 
   private def executeWrapperTask(referenceDir: Path): Unit = {

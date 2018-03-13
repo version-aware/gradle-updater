@@ -5,10 +5,8 @@ import java.net.URL
 import com.versionaware.gradleupdater.GradleDistributionType._
 
 case class GradleDistributionUrlProvider(gradleVersion: GradleVersion) {
-  val bin: URL = new URL(
-    s"https://services.gradle.org/distributions/gradle-${gradleVersion.version}-bin.zip")
-  val all: URL = new URL(
-    s"https://services.gradle.org/distributions/gradle-${gradleVersion.version}-all.zip")
+  val bin: URL = new URL(s"https://services.gradle.org/distributions/gradle-${gradleVersion.version}-bin.zip")
+  val all: URL = new URL(s"https://services.gradle.org/distributions/gradle-${gradleVersion.version}-all.zip")
   def get(t: GradleDistributionType): URL = t match {
     case All => all
     case Bin => bin

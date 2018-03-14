@@ -30,15 +30,14 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
     } finally target.close()
   }
 
-  // GitLabApi doesn't support archiving
-  ignore must "detect archived project" in { f =>
+  it must "detect archived project" in { f =>
     val toUpdateVersion = GradleVersion("4.6")
     val target          = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
     try {
       val p = f.api.getProjectApi
         .createProject(new Project().withPath("test-project"))
-      // f.api.getProjectApi.archiveProject(p.getId)
-      target.tryUpdate(p) shouldBe ArchivedProject
+      val archivedProject = f.api.getProjectApi.archiveProject(p.getId)
+      target.tryUpdate(archivedProject) shouldBe ArchivedProject
     } finally target.close()
   }
 
@@ -85,7 +84,7 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
   private def createProject(api: GitLabApi,
                             version: GradleVersion,
                             distributionType: GradleDistributionType): Project = {
-    val p = api.getProjectApi.createProject(new Project().withPath("test-project"))
+    val p       = api.getProjectApi.createProject(new Project().withPath("test-project"))
     val updater = new GitLabGradleUpdater(api, version, None)
     try {
       api.getCommitsApi.createCommit(

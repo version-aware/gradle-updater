@@ -2,7 +2,7 @@ package com.versionaware.gradleupdater
 
 import java.util.Base64
 
-import com.versionaware.gradleupdater.GradleUpdateResult._
+import com.versionaware.gradleupdater.GitLabUpdaterResult._
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.models.{CommitAction, Project}
 
@@ -72,11 +72,20 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
     } finally target.close()
   }
 
+  it must "detected outdated project in dry-run" in { f =>
+    val toUpdateVersion = GradleVersion("4.6")
+    val target          = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+    try {
+      val distributionType = GradleDistributionType.Bin
+      val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType)
+      target.tryUpdateDryRun(p) shouldBe WouldBeUpdated
+    } finally target.close()
+  }
+
   private def createProject(api: GitLabApi,
                             version: GradleVersion,
                             distributionType: GradleDistributionType): Project = {
-    val p =
-      api.getProjectApi.createProject(new Project().withPath("test-project"))
+    val p = api.getProjectApi.createProject(new Project().withPath("test-project"))
     val updater = new GitLabGradleUpdater(api, version, None)
     try {
       api.getCommitsApi.createCommit(

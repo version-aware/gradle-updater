@@ -15,7 +15,7 @@ abstract class IntegrationSpec extends org.scalatest.fixture.FlatSpec with Match
   case class FixtureParam(api: GitLabApi)
 
   def withFixture(test: OneArgTest): Outcome = {
-    val api = GitLabApi.login(GitLabUri, GitLabUsername, GitLabPassword)
+    val api = GitLabApi.oauth2Login(GitLabUri, GitLabUsername, GitLabPassword)
     api.getGroupApi.getGroups.forEach(api.getGroupApi.deleteGroup(_))
     api.getProjectApi.getProjects.forEach(api.getProjectApi.deleteProject(_))
     withFixture(test.toNoArgTest(FixtureParam(api)))

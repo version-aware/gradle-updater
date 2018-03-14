@@ -13,6 +13,7 @@ import scala.util.control.NonFatal
 
 object Program extends StrictLogging {
   case class CommandLineArgs(logLevel: Level = Level.INFO,
+                             dryRun: Boolean = false,
                              gradleVersion: Option[String] = None,
                              gradleDistribution: Option[GradleDistributionType] = None,
                              gitlabUri: String = "",
@@ -33,6 +34,9 @@ object Program extends StrictLogging {
       head("")
 
       help("help")
+      opt[Unit]("dry-run")
+        .action((v, args) => args.copy(dryRun = true))
+        .text("Doesn't create merge requests.")
       opt[String]('g', "gitlab-uri")
         .action((v, args) => args.copy(gitlabUri = v))
         .text("GitLab Uri, like http://mygitlab.com")
@@ -104,7 +108,7 @@ object Program extends StrictLogging {
           logger.debug(s"Going to check ${p.getPathWithNamespace}...")
           val start = System.nanoTime()
           try {
-            val r       = gradleUpdater.tryUpdate(p)
+            val r       = if (cmdArgs.dryRun) gradleUpdater.tryUpdateDryRun(p) else gradleUpdater.tryUpdate(p)
             val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
             logger.info(s"Check of ${p.getPathWithNamespace} ends with ${r.toString} in $seconds seconds")
             false

@@ -12,6 +12,7 @@ It's distributed as Linux Docker image and so can be used easily:
 Usage: docker run --rm versionaware/gradle-gitlab-updater [options]
 
   --help
+  --dry-run                Doesn't create merge requests.
   -g, --gitlab-uri <value>
                            GitLab Uri, like http://mygitlab.com
   -u, --gitlab-username <value>

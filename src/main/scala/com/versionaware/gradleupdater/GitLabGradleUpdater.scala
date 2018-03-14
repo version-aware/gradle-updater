@@ -6,7 +6,7 @@ import java.nio.file.Files
 import java.util.Base64
 
 import com.typesafe.scalalogging.StrictLogging
-import com.versionaware.gradleupdater.GradleUpdateResult._
+import com.versionaware.gradleupdater.GitLabUpdaterResult._
 import org.gitlab4j.api.{GitLabApi, GitLabApiException}
 import org.gitlab4j.api.models._
 
@@ -25,7 +25,15 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
 
   private val branchName = s"Gradle_${gradleVersion.version.replace('.', '_')}"
 
-  def tryUpdate(project: Project): GradleUpdateResult =
+  def tryUpdateDryRun(project: Project): GitLabUpdaterDryRunResult =
+    updateStrategy(project, (_, _) => WouldBeUpdated).asInstanceOf[GitLabUpdaterDryRunResult]
+
+  def tryUpdate(project: Project): GitLabUpdaterResult =
+    updateStrategy(project, (p, t) => Updated(performUpdate(p, t))).asInstanceOf[GitLabUpdaterResult]
+
+  protected def updateStrategy[T <: GitLabUpdaterResultCore](
+      project: Project,
+      performUpdate: (Project, GradleDistributionType) => T): GitLabUpdaterResultCore =
     try {
       if (project.getArchived) ArchivedProject
       else if (!project.getMergeRequestsEnabled) DoesNotSupportMergeRequests
@@ -43,7 +51,7 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
               gradleDistribution.getOrElse(GradleDistributionUrlProvider.getType(currentDistributionUrl))
             val desiredUrl = distributionUrlProvider.get(desiredType)
             if (desiredUrl.equals(currentDistributionUrl)) UpToDate
-            else Updated(performUpdate(project, desiredType))
+            else performUpdate(project, desiredType)
           case None => CannotFindDistributionUrl
         }
       }
@@ -168,17 +176,4 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
 
   override def close(): Unit =
     GradleReferenceDirectory.remove(referenceDirectory)
-}
-
-sealed trait GradleUpdateResult
-object GradleUpdateResult {
-  case object ArchivedProject                    extends GradleUpdateResult
-  case object DoesNotSupportMergeRequests        extends GradleUpdateResult
-  case object TooLowAccessLevel                  extends GradleUpdateResult
-  case class AccessDenied(message: String)       extends GradleUpdateResult
-  case class Failure(e: Throwable)               extends GradleUpdateResult
-  case object GradleWrapperNotDetected           extends GradleUpdateResult
-  case object CannotFindDistributionUrl          extends GradleUpdateResult
-  case object UpToDate                           extends GradleUpdateResult
-  case class Updated(mergeRequest: MergeRequest) extends GradleUpdateResult
 }

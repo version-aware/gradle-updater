@@ -59,8 +59,8 @@ object GradleReferenceDirectory extends StrictLogging {
 
   private def executeWrapperTask(referenceDir: Path): Unit = {
     val cmd =
-      if (isWindows) Seq("gradlew.bat", "wrapper")
-      else Seq("./gradlew", "wrapper")
+      if (isWindows) Seq("gradlew.bat", "wrapper", "--no-daemon")
+      else Seq("./gradlew", "wrapper", "--no-daemon")
     require(
       process
         .Process(cmd, referenceDir.toFile)

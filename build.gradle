@@ -37,7 +37,7 @@ dependencies {
     compile 'io.circe:circe-parser_2.12:0.9.0'
     compile 'io.circe:circe-generic_2.12:0.9.0'
 
-    compile 'org.gitlab4j:gitlab4j-api:4.8.5'
+    compile 'org.gitlab4j:gitlab4j-api:4.8.7'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.scalatest:scalatest_2.12:3.0.4'

@@ -129,13 +129,12 @@ object Program extends StrictLogging {
   }
 
   private def createGitLabApi(cmdArgs: CommandLineArgs): GitLabApi =
-    // TODO: Use SecureString after the support will be added to gitlab4j library
     if (cmdArgs.gitlabPrivateTokenFromStdIn) {
       new GitLabApi(cmdArgs.gitlabUri, new String(System.console().readPassword()))
     } else if (cmdArgs.gitlabPasswordFromStdIn) {
       GitLabApi.oauth2Login(cmdArgs.gitlabUri,
                             cmdArgs.gitlabUsername.getOrElse(""),
-                            new String(System.console().readPassword()))
+                            System.console().readPassword())
     } else
       cmdArgs.gitlabPrivateToken match {
         case Some(privateToken) =>

@@ -99,36 +99,32 @@ object Program extends StrictLogging {
     val gitLabApi = createGitLabApi(cmdArgs)
     val gradleUpdater =
       new GitLabGradleUpdater(gitLabApi, gradleVersion, cmdArgs.gradleDistribution)
-    val failedProjects = try {
-      gitLabApi.getProjectApi
-        .getProjects(0, Integer.MAX_VALUE)
-        .asScala
-        .filter(p => {
-          val toProcess = cmdArgs.filter.forall(_.asPredicate().test(p.getPathWithNamespace))
-          if (!toProcess) logger.info(s"Skipping project ${p.getPathWithNamespace}")
-          toProcess
-        })
-        .count(p => {
-          logger.debug(s"Going to check ${p.getPathWithNamespace}...")
-          val start = System.nanoTime()
-          try {
-            val r       = if (cmdArgs.dryRun) gradleUpdater.tryUpdateDryRun(p) else gradleUpdater.tryUpdate(p)
+    val failedProjects = gitLabApi.getProjectApi
+      .getProjects(0, Integer.MAX_VALUE)
+      .asScala
+      .filter(p => {
+        val toProcess = cmdArgs.filter.forall(_.asPredicate().test(p.getPathWithNamespace))
+        if (!toProcess) logger.info(s"Skipping project ${p.getPathWithNamespace}")
+        toProcess
+      })
+      .count(p => {
+        logger.debug(s"Going to check ${p.getPathWithNamespace}...")
+        val start = System.nanoTime()
+        try {
+          val r       = if (cmdArgs.dryRun) gradleUpdater.tryUpdateDryRun(p) else gradleUpdater.tryUpdate(p)
+          val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
+          logger.info(s"Check of ${p.getPathWithNamespace} ends with ${r.toString} in $seconds seconds")
+          false
+        } catch {
+          case NonFatal(e) =>
             val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
-            logger.info(s"Check of ${p.getPathWithNamespace} ends with ${r.toString} in $seconds seconds")
-            false
-          } catch {
-            case NonFatal(e) =>
-              val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
-              logger.error(
-                s"Check of ${p.getPathWithNamespace} ends with ${e.getClass.getSimpleName} in $seconds seconds: ${e.getMessage}",
-                e
-              )
-              true
-          }
-        })
-    } finally {
-      gradleUpdater.close()
-    }
+            logger.error(
+              s"Check of ${p.getPathWithNamespace} ends with ${e.getClass.getSimpleName} in $seconds seconds: ${e.getMessage}",
+              e
+            )
+            true
+        }
+      })
     sys.exit(if (failedProjects > 0) 1 else 0)
   }
 

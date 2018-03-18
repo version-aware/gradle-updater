@@ -1,14 +1,12 @@
 package com.versionaware.gradleupdater
 
 import java.net.URL
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.util.Base64
 
 import com.typesafe.scalalogging.StrictLogging
 import com.versionaware.gradleupdater.GitLabUpdaterResult._
-import org.gitlab4j.api.{GitLabApi, GitLabApiException}
 import org.gitlab4j.api.models._
+import org.gitlab4j.api.{GitLabApi, GitLabApiException}
 
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
@@ -16,14 +14,11 @@ import scala.util.control.NonFatal
 class GitLabGradleUpdater(gitLabApi: GitLabApi,
                           gradleVersion: GradleVersion,
                           gradleDistribution: Option[GradleDistributionType])
-    extends AutoCloseable
-    with StrictLogging {
+    extends StrictLogging {
 
-  private val referenceDirectory =
-    GradleReferenceDirectory.initialize(gradleVersion)
+  private val gradleWrapperFiles      = new GradleWrapperFiles(gradleVersion)
   private val distributionUrlProvider = new GradleDistributionUrlProvider(gradleVersion)
-
-  private val branchName = s"Gradle_${gradleVersion.version.replace('.', '_')}"
+  private val branchName              = s"Gradle_${gradleVersion.version.replace('.', '_')}"
 
   def tryUpdateDryRun(project: Project): GitLabUpdaterDryRunResult =
     updateStrategy(project, (_, _) => WouldBeUpdated).asInstanceOf[GitLabUpdaterDryRunResult]
@@ -102,53 +97,16 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
     }
 
   def getCommitActions(distributionType: GradleDistributionType,
-                       action: CommitAction.Action): Seq[CommitAction] = Seq(
-    new CommitAction()
-      .withAction(action)
-      .withFilePath("gradlew")
-      .withEncoding(CommitAction.Encoding.BASE64)
-      .withContent(
-        Base64.getEncoder.encodeToString(Files.readAllBytes(referenceDirectory.resolve("gradlew")))),
-    new CommitAction()
-      .withAction(action)
-      .withFilePath("gradlew.bat")
-      .withEncoding(CommitAction.Encoding.BASE64)
-      .withContent(
-        Base64.getEncoder.encodeToString(Files.readAllBytes(referenceDirectory.resolve("gradlew.bat")))),
-    new CommitAction()
-      .withAction(action)
-      .withFilePath("gradle/wrapper/gradle-wrapper.jar")
-      .withEncoding(CommitAction.Encoding.BASE64)
-      .withContent(
-        Base64.getEncoder.encodeToString(
-          Files.readAllBytes(
-            referenceDirectory
-              .resolve("gradle")
-              .resolve("wrapper")
-              .resolve("gradle-wrapper.jar")))),
-    new CommitAction()
-      .withAction(action)
-      .withFilePath("gradle/wrapper/gradle-wrapper.properties")
-      .withEncoding(CommitAction.Encoding.BASE64)
-      .withContent(Base64.getEncoder.encodeToString(replaceDistributionUrl(
-        Files.readAllBytes(referenceDirectory
-          .resolve("gradle")
-          .resolve("wrapper")
-          .resolve("gradle-wrapper.properties")),
-        distributionUrlProvider.get(distributionType)
-      )))
-  )
-
-  private def replaceDistributionUrl(bytes: Array[Byte], url: URL): Array[Byte] = {
-    new String(bytes).lines
-      .map(l => {
-        if (l.startsWith("distributionUrl="))
-          s"distributionUrl=${url.toString.replace(":", "\\:")}"
-        else l
-      })
-      .mkString("\n")
-      .getBytes(StandardCharsets.UTF_8)
-  }
+                       action: CommitAction.Action): Seq[CommitAction] =
+    gradleWrapperFiles
+      .get(distributionType)
+      .map(
+        f =>
+          new CommitAction()
+            .withAction(action)
+            .withFilePath(f.path.iterator().asScala.mkString("/"))
+            .withEncoding(CommitAction.Encoding.BASE64)
+            .withContent(Base64.getEncoder.encodeToString(f.content)))
 
   private def performUpdate(project: Project, distributionType: GradleDistributionType): MergeRequest = {
     gitLabApi.getCommitsApi.createCommit(
@@ -173,7 +131,4 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
       true
     )
   }
-
-  override def close(): Unit =
-    GradleReferenceDirectory.remove(referenceDirectory)
 }

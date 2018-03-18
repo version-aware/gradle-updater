@@ -15,6 +15,7 @@ object GitLabUpdaterResult {
   case object GradleWrapperNotDetected           extends GitLabUpdaterResult with GitLabUpdaterDryRunResult
   case object CannotFindDistributionUrl          extends GitLabUpdaterResult with GitLabUpdaterDryRunResult
   case object UpToDate                           extends GitLabUpdaterResult with GitLabUpdaterDryRunResult
+  case object UpdateBranchAlreadyExists          extends GitLabUpdaterResult with GitLabUpdaterDryRunResult
   case class Updated(mergeRequest: MergeRequest) extends GitLabUpdaterResult
   case object WouldBeUpdated                     extends GitLabUpdaterDryRunResult
 }

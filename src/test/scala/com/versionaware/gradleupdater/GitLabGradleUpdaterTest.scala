@@ -61,6 +61,18 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
         .replace(":", "\\:"))
   }
 
+  it must "return UpdateBranchAlreadyExists after it was updated" in { f =>
+    val toUpdateVersion  = GradleVersion("4.6")
+    val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+    val distributionType = GradleDistributionType.Bin
+    val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType)
+    target.tryUpdate(p) match {
+      case u: Updated => u
+      case other      => sys.error(s"Updated result expected but $other found")
+    }
+    target.tryUpdate(p) shouldBe UpdateBranchAlreadyExists
+  }
+
   it must "detected outdated project in dry-run" in { f =>
     val toUpdateVersion  = GradleVersion("4.6")
     val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)

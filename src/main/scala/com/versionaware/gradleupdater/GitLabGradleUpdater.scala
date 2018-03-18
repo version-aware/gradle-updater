@@ -35,6 +35,8 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
       else if (!haveSufficientAccessLevel(project)) TooLowAccessLevel
       else if (!isGradleWrapperPresent(project)) {
         GradleWrapperNotDetected
+      } else if (updateBranchAlreadyExists(project)) {
+        UpdateBranchAlreadyExists
       } else {
         val propertiesFile = gitLabApi.getRepositoryFileApi.getFile(
           "gradle/wrapper/gradle-wrapper.properties",
@@ -55,6 +57,9 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
         AccessDenied(e.getMessage)
       case NonFatal(e) => Failure(e)
     }
+
+  private def updateBranchAlreadyExists(project: Project): Boolean =
+    gitLabApi.getRepositoryApi.getBranches(project.getId).asScala.exists(_.getName == branchName)
 
   private def extractDistributionUrl(propertiesFile: RepositoryFile): Option[URL] =
     new String(Base64.getDecoder.decode(propertiesFile.getContent)).lines

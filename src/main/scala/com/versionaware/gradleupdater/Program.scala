@@ -125,7 +125,7 @@ object Program extends StrictLogging {
             true
         }
       })
-    sys.exit(if (failedProjects > 0) 1 else 0)
+    if (failedProjects > 0) sys.exit(1)
   }
 
   private def createGitLabApi(cmdArgs: CommandLineArgs): GitLabApi =

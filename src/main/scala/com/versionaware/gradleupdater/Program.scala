@@ -103,7 +103,11 @@ object Program extends StrictLogging {
       gitLabApi.getProjectApi
         .getProjects(0, Integer.MAX_VALUE)
         .asScala
-        .filter(p => cmdArgs.filter.forall(_.asPredicate().test(p.getPathWithNamespace)))
+        .filter(p => {
+          val toProcess = cmdArgs.filter.forall(_.asPredicate().test(p.getPathWithNamespace))
+          if (!toProcess) logger.info(s"Skipping project ${p.getPathWithNamespace}")
+          toProcess
+        })
         .count(p => {
           logger.debug(s"Going to check ${p.getPathWithNamespace}...")
           val start = System.nanoTime()

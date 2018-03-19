@@ -21,10 +21,10 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
   private val branchName              = s"Gradle_${gradleVersion.version.replace('.', '_')}"
 
   def tryUpdateDryRun(project: Project): GitLabProjectDryRunResult =
-    tryUpdateStrategy(
+    tryUpdateStrategy[GitLabProjectDryRunResult](
       project,
       gradleDirs => {
-        val results: Seq[GitLabDirectoryDryRunResult] = gradleDirs.map {
+        val results = gradleDirs.map[GitLabDirectoryDryRunResult, Seq[GitLabDirectoryDryRunResult]] {
           case DirectoryStatus.CannotFindDistributionUrl(path) =>
             GitLabDirectoryResult.CannotFindDistributionUrl(path)
           case DirectoryStatus.UpToDate(path)       => GitLabDirectoryResult.UpToDate(path)
@@ -40,7 +40,7 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
     tryUpdateStrategy(
       project,
       gradleDirs => {
-        val results: Seq[GitLabDirectoryResult] = gradleDirs.map {
+        val results = gradleDirs.map[GitLabDirectoryResult, Seq[GitLabDirectoryResult]] {
           case DirectoryStatus.CannotFindDistributionUrl(path) =>
             GitLabDirectoryResult.CannotFindDistributionUrl(path)
           case DirectoryStatus.UpToDate(path)       => GitLabDirectoryResult.UpToDate(path)
@@ -99,7 +99,7 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
     gradleFiles
       .filter(i =>
         i.getName == "gradlew" && isDirectoryWithWrapper(gradleFiles, i.getPath.stripSuffix("gradlew")))
-      .map(_.getPath.stripSuffix("gradlew"))
+      .map(_.getPath.stripSuffix("gradlew").stripSuffix("/"))
   }
 
   private def isDirectoryWithWrapper(gradleFiles: Seq[TreeItem], directoryPath: String): Boolean =
@@ -112,7 +112,7 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
 
   private def getDirectoryStatus(project: Project, path: String): DirectoryStatus = {
     val propertiesFile = gitLabApi.getRepositoryFileApi.getFile(
-      s"${path}gradle/wrapper/gradle-wrapper.properties",
+      s"$path/gradle/wrapper/gradle-wrapper.properties",
       project.getId,
       Option(project.getDefaultBranch).getOrElse("master"))
     extractDistributionUrl(propertiesFile) match {
@@ -148,7 +148,7 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
         f =>
           new CommitAction()
             .withAction(action)
-            .withFilePath(dir + f.path.iterator().asScala.mkString("/"))
+            .withFilePath(dir.stripSuffix("/") + "/" + f.path.iterator().asScala.mkString("/"))
             .withEncoding(CommitAction.Encoding.BASE64)
             .withContent(Base64.getEncoder.encodeToString(f.content)))
 

@@ -40,24 +40,27 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
     target.tryUpdate(p) shouldBe DoesNotSupportMergeRequests
   }
 
-  it must "update the project" in { f =>
-    val toUpdateVersion  = GradleVersion("4.6")
-    val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
-    val distributionType = GradleDistributionType.Bin
-    val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType)
-    val actual = target.tryUpdate(p) match {
-      case Updated(mr, Seq(result)) =>
-        result shouldBe GitLabDirectoryResult.Updated("")
-        val newFile = f.api.getRepositoryFileApi
-          .getFile("gradle/wrapper/gradle-wrapper.properties", p.getId, mr.getSourceBranch)
-        new String(Base64.getDecoder.decode(newFile.getContent)) should include(
-          GradleDistributionUrlProvider(toUpdateVersion)
-            .get(distributionType)
-            .toString
-            .replace(":", "\\:"))
-      case other => fail(s"Updated result expected but $other found")
+  Seq("", "subdir").foreach(subDir => {
+    it must s"update the project in '$subDir'" in {
+      f =>
+        val toUpdateVersion  = GradleVersion("4.6")
+        val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
+        val distributionType = GradleDistributionType.Bin
+        val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType, subDir)
+        target.tryUpdate(p) match {
+          case Updated(mr, Seq(result)) =>
+            result shouldBe GitLabDirectoryResult.Updated(subDir)
+            val newFile = f.api.getRepositoryFileApi
+              .getFile(s"$subDir/gradle/wrapper/gradle-wrapper.properties", p.getId, mr.getSourceBranch)
+            new String(Base64.getDecoder.decode(newFile.getContent)) should include(
+              GradleDistributionUrlProvider(toUpdateVersion)
+                .get(distributionType)
+                .toString
+                .replace(":", "\\:"))
+          case other => fail(s"Updated result expected but $other found")
+        }
     }
-  }
+  })
 
   it must "return UpdateBranchAlreadyExists after it was updated" in { f =>
     val toUpdateVersion  = GradleVersion("4.6")
@@ -65,7 +68,7 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
     val distributionType = GradleDistributionType.Bin
     val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType)
     target.tryUpdate(p) match {
-      case u: Updated => u
+      case _: Updated =>
       case other      => fail(s"Updated result expected but $other found")
     }
     target.tryUpdate(p) shouldBe UpdateBranchAlreadyExists
@@ -81,7 +84,8 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
 
   private def createProject(api: GitLabApi,
                             version: GradleVersion,
-                            distributionType: GradleDistributionType): Project = {
+                            distributionType: GradleDistributionType,
+                            gradleDirectory: String = ""): Project = {
     val p       = api.getProjectApi.createProject(new Project().withPath("test-project"))
     val updater = new GitLabGradleUpdater(api, version, None)
     api.getCommitsApi.createCommit(
@@ -92,7 +96,7 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
       null,
       "test",
       updater
-        .getCommitActions("/", distributionType, CommitAction.Action.CREATE)
+        .getCommitActions(gradleDirectory, distributionType, CommitAction.Action.CREATE)
         .asJava
     )
     p

@@ -1,10 +1,11 @@
-package com.versionaware.gradleupdater
+package com.versionaware.gradleupdater.gitlab
 
 import java.net.URL
 import java.util.Base64
 
 import com.typesafe.scalalogging.StrictLogging
-import com.versionaware.gradleupdater.GitLabProjectResult._
+import com.versionaware.gradleupdater._
+import com.versionaware.gradleupdater.gitlab.GitLabProjectResult._
 import org.gitlab4j.api.models._
 import org.gitlab4j.api.{GitLabApi, GitLabApiException}
 

@@ -1,4 +1,4 @@
-package com.versionaware.gradleupdater
+package com.versionaware.gradleupdater.gitlab
 
 import org.gitlab4j.api.models.MergeRequest
 

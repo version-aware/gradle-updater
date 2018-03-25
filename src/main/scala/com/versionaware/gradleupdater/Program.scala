@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 
 import ch.qos.logback.classic.Level
 import com.typesafe.scalalogging.StrictLogging
+import com.versionaware.gradleupdater.gitlab.GitLabGradleUpdater
 import org.gitlab4j.api.GitLabApi
 import org.slf4j.{Logger, LoggerFactory}
 

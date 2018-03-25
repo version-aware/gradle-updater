@@ -74,14 +74,14 @@ object Program extends StrictLogging {
         .action((v, args) => args.copy(gradleVersion = Some(v)))
         .text("Gradle version to update to. If not specified then the latest stable version is used.")
       opt[String]('d', "gradle-distribution")
-        .action((v, args) => args.copy(gradleDistribution = Some(parseGradleDitribution(v))))
+        .action((v, args) => args.copy(gradleDistribution = Some(parseGradleDistribution(v))))
         .text("Gradle distribution to use - 'all' or 'bin'. If not specified then the distribution is not changed.")
       opt[String]('l', "log-level")
         .action((v, args) => args.copy(logLevel = Level.valueOf(v)))
         .text("Log-level to use, default is INFO. Other values: OFF, ERROR, WARN, DEBUG, TRACE, ALL")
     }
 
-  private def parseGradleDitribution(v: String): GradleDistributionType =
+  private def parseGradleDistribution(v: String): GradleDistributionType =
     v.toLowerCase.trim match {
       case "all" => GradleDistributionType.All
       case "bin" => GradleDistributionType.Bin

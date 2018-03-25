@@ -3,7 +3,7 @@ package com.versionaware.gradleupdater.gitlab
 import java.util.Base64
 
 import com.versionaware.gradleupdater.gitlab.GitLabProjectResult._
-import com.versionaware.gradleupdater.{GradleDistributionType, GradleDistributionUrlProvider, GradleVersion, IntegrationSpec}
+import com.versionaware.gradleupdater.{GradleDistributionType, GradleDistributionUrlProvider, GradleVersion}
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.models.{CommitAction, Project}
 

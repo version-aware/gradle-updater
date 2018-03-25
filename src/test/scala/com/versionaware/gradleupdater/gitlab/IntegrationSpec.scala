@@ -1,9 +1,9 @@
-package com.versionaware.gradleupdater
+package com.versionaware.gradleupdater.gitlab
 
 import org.gitlab4j.api.GitLabApi
 import org.junit.runner.RunWith
-import org.scalatest.{Matchers, Outcome}
 import org.scalatest.junit.JUnitRunner
+import org.scalatest.{Matchers, Outcome}
 
 @RunWith(classOf[JUnitRunner])
 abstract class IntegrationSpec extends org.scalatest.fixture.FlatSpec with Matchers {

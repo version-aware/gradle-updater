@@ -1,11 +1,14 @@
 package com.versionaware.gradleupdater
 
+import java.nio.file.Paths
 import java.time.Duration
 import java.util.regex.Pattern
 
 import ch.qos.logback.classic.Level
 import com.typesafe.scalalogging.StrictLogging
+import com.versionaware.gradleupdater.filesystem.FileSystemGradleUpdater
 import com.versionaware.gradleupdater.gitlab.GitLabGradleUpdater
+import com.versionaware.gradleupdater.gitlab.GitLabProjectResult._
 import org.gitlab4j.api.GitLabApi
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -17,31 +20,38 @@ object Program extends StrictLogging {
                              dryRun: Boolean = false,
                              gradleVersion: Option[String] = None,
                              gradleDistribution: Option[GradleDistributionType] = None,
+                             directory: String = "",
                              gitlabUri: String = "",
                              gitlabUsername: Option[String] = None,
                              gitlabPassword: Option[String] = None,
                              gitlabPasswordFromStdIn: Boolean = false,
                              gitlabPrivateToken: Option[String] = None,
                              gitlabPrivateTokenFromStdIn: Boolean = false,
-                             filter: Option[Pattern] = None)
+                             gitlabFilter: Option[Pattern] = None)
   private val cmdParser =
-    new scopt.OptionParser[CommandLineArgs]("docker run --rm versionaware/gradle-gitlab-updater") {
+    new scopt.OptionParser[CommandLineArgs]("docker run --rm versionaware/gradle-updater") {
 
-      head("Gradle GitLab Updater by VersionAware")
-      head("Iterates all the projects accessible for the specified user, with optional filter.")
+      head("Gradle Updater by VersionAware")
+      head(
+        "if 'gitlab-uri' parameter is specified then iterates all the GitLab projects accessible for the specified user, with optional filter.")
       head(
         "If outdated Gradle Wrapper is detected then it creates a new Merge Request with the specified Gradle Wrapper version.")
       head("The user must have at least Developer permission to create a new MR.")
+      head("")
+      head(
+        "It's also possible to specify the 'directory' - then this directory is searched for Gradle projects to update.")
       head("")
 
       help("help")
       opt[Unit]("dry-run")
         .action((v, args) => args.copy(dryRun = true))
         .text("Doesn't create merge requests.")
+      opt[String]("dir")
+        .action((v, args) => args.copy(directory = v))
+        .text("Path to directory that will be searched for Gradle projects to update")
       opt[String]('g', "gitlab-uri")
         .action((v, args) => args.copy(gitlabUri = v))
         .text("GitLab Uri, like http://mygitlab.com")
-        .required()
       opt[String]('u', "gitlab-username")
         .action((v, args) => args.copy(gitlabUsername = Some(v)))
         .text("Username to access GitLab.")
@@ -57,8 +67,8 @@ object Program extends StrictLogging {
       opt[Unit]("gitlab-token-stdin")
         .action((v, args) => args.copy(gitlabPrivateTokenFromStdIn = true))
         .text("Private token to access GitLab will be read from stdin.")
-      opt[String]('f', "filter")
-        .action((v, args) => args.copy(filter = Some(Pattern.compile(v))))
+      opt[String]("gitlab-filter")
+        .action((v, args) => args.copy(gitlabFilter = Some(Pattern.compile(v))))
         .text("Regular expression that must match for project ID, like 'my-group/my-project'.")
       opt[String]('v', "gradle-version")
         .action((v, args) => args.copy(gradleVersion = Some(v)))
@@ -95,16 +105,29 @@ object Program extends StrictLogging {
 
     val gradleVersion = cmdArgs.gradleVersion match {
       case Some(gv) => GradleVersion(gv)
-      case None     => GradleCurrentVersion.get()
+      case None =>
+        val v = GradleCurrentVersion.get()
+        logger.info(s"Will try to update to ${v.version}")
+        v
     }
-    val gitLabApi = createGitLabApi(cmdArgs)
-    val gradleUpdater =
-      new GitLabGradleUpdater(gitLabApi, gradleVersion, cmdArgs.gradleDistribution)
+    val fails = scala.collection.mutable.ArrayBuffer.empty[Boolean]
+    if (cmdArgs.gitlabUri.nonEmpty) {
+      fails.append(tryUpdateInGitLab(cmdArgs, gradleVersion))
+    }
+    if (cmdArgs.directory.nonEmpty) {
+      fails.append(tryUpdateOnFileSystem(cmdArgs, gradleVersion))
+    }
+    if (fails.contains(true)) sys.exit(1)
+  }
+
+  private def tryUpdateInGitLab(cmdArgs: CommandLineArgs, gradleVersion: GradleVersion): Boolean = {
+    val gitLabApi     = createGitLabApi(cmdArgs)
+    val gradleUpdater = new GitLabGradleUpdater(gitLabApi, gradleVersion, cmdArgs.gradleDistribution)
     val failedProjects = gitLabApi.getProjectApi
       .getProjects(0, Integer.MAX_VALUE)
       .asScala
       .filter(p => {
-        val toProcess = cmdArgs.filter.forall(_.asPredicate().test(p.getPathWithNamespace))
+        val toProcess = cmdArgs.gitlabFilter.forall(_.asPredicate().test(p.getPathWithNamespace))
         if (!toProcess) logger.info(s"Skipping project ${p.getPathWithNamespace}")
         toProcess
       })
@@ -115,7 +138,12 @@ object Program extends StrictLogging {
           val r       = if (cmdArgs.dryRun) gradleUpdater.tryUpdateDryRun(p) else gradleUpdater.tryUpdate(p)
           val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
           logger.info(s"Check of ${p.getPathWithNamespace} ends with ${r.toString} in $seconds seconds")
-          false
+          r match {
+            case _: Failure | _: AccessDenied | TooLowAccessLevel | UpdateBranchAlreadyExists |
+                DoesNotSupportMergeRequests =>
+              true
+            case _ => false
+          }
         } catch {
           case NonFatal(e) =>
             val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
@@ -126,7 +154,7 @@ object Program extends StrictLogging {
             true
         }
       })
-    if (failedProjects > 0) sys.exit(1)
+    failedProjects > 0
   }
 
   private def createGitLabApi(cmdArgs: CommandLineArgs): GitLabApi =
@@ -145,4 +173,27 @@ object Program extends StrictLogging {
                                 cmdArgs.gitlabUsername.getOrElse(""),
                                 cmdArgs.gitlabPassword.getOrElse(""))
       }
+
+  private def tryUpdateOnFileSystem(cmdArgs: CommandLineArgs, gradleVersion: GradleVersion): Boolean = {
+    val dir   = Paths.get(cmdArgs.directory)
+    val start = System.nanoTime()
+    try {
+      val gradleUpdater = new FileSystemGradleUpdater(gradleVersion, cmdArgs.gradleDistribution)
+      val r             = if (cmdArgs.dryRun) gradleUpdater.tryUpdateDryRun(dir) else gradleUpdater.tryUpdate(dir)
+      val seconds       = Duration.ofNanos(System.nanoTime() - start).getSeconds
+      logger.info(s"Check of $dir ends with ${r.toString} in $seconds seconds")
+      r match {
+        case _: Failure => true
+        case _          => false
+      }
+    } catch {
+      case NonFatal(e) =>
+        val seconds = Duration.ofNanos(System.nanoTime() - start).getSeconds
+        logger.error(
+          s"Check of $dir ends with ${e.getClass.getSimpleName} in $seconds seconds: ${e.getMessage}",
+          e
+        )
+        true
+    }
+  }
 }

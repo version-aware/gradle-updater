@@ -1,5 +1,7 @@
 package com.versionaware.gradleupdater
 
+import com.versionaware.gradleupdater.gitlab.IntegrationSpec
+
 class ProgramTest extends IntegrationSpec {
   it must "not throw an exception for empty GitLab" in { _ =>
     val target = Program

@@ -10,12 +10,12 @@ import scala.collection.JavaConverters._
 class FileSystemGradleUpdaterTest extends IntegrationSpec {
 
   it must "detect missing Gradle Wrapper for empty directory" in { f =>
-    val target = new FileSystemGradleUpdater(GradleVersion("4.6"), None)
+    val target = new FileSystemGradleUpdater(GradleVersion("4.10.3"), None)
     target.tryUpdate(f.dir) shouldBe GradleWrapperNotDetected
   }
 
   it must "do nothing for up-to-date project" in { f =>
-    val toUpdateVersion  = GradleVersion("4.6")
+    val toUpdateVersion  = GradleVersion("4.10.3")
     val distributionType = GradleDistributionType.Bin
     val target           = new FileSystemGradleUpdater(toUpdateVersion, Some(distributionType))
     val dir              = createProject(f.dir, toUpdateVersion, distributionType)
@@ -25,10 +25,10 @@ class FileSystemGradleUpdaterTest extends IntegrationSpec {
   Seq("", "subdir").foreach(subDir => {
     it must s"update the project in '$subDir'" in {
       f =>
-        val toUpdateVersion  = GradleVersion("4.6")
+        val toUpdateVersion  = GradleVersion("4.10.3")
         val target           = new FileSystemGradleUpdater(toUpdateVersion, None)
         val distributionType = GradleDistributionType.Bin
-        val dir              = createProject(f.dir.resolve(subDir), GradleVersion("4.5.1"), distributionType)
+        val dir              = createProject(f.dir.resolve(subDir), GradleVersion("4.8.1"), distributionType)
         target.tryUpdate(dir) match {
           case Updated(Seq(result)) =>
             result shouldBe FileSystemDirectoryResult.Updated(dir)
@@ -46,10 +46,10 @@ class FileSystemGradleUpdaterTest extends IntegrationSpec {
   })
 
   it must "detected outdated project in dry-run" in { f =>
-    val toUpdateVersion  = GradleVersion("4.6")
+    val toUpdateVersion  = GradleVersion("4.10.3")
     val target           = new FileSystemGradleUpdater(toUpdateVersion, None)
     val distributionType = GradleDistributionType.Bin
-    val dir              = createProject(f.dir, GradleVersion("4.5.1"), distributionType)
+    val dir              = createProject(f.dir, GradleVersion("4.8"), distributionType)
     target.tryUpdateDryRun(dir) shouldBe WouldBeUpdated(Seq(FileSystemDirectoryResult.WouldBeUpdated(dir)))
   }
 

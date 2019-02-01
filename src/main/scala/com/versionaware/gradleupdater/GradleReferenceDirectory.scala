@@ -61,17 +61,17 @@ object GradleReferenceDirectory extends StrictLogging {
     val cmd =
       if (isWindows) Seq("gradlew.bat", "wrapper", "--no-daemon")
       else Seq("./gradlew", "wrapper", "--no-daemon")
-    require(
-      process
-        .Process(cmd, referenceDir.toFile)
-        .run()
-        .exitValue() == 0
-        && process
-          .Process(cmd, referenceDir.toFile)
-          .run()
-          .exitValue() == 0,
-      "gradlew wrapper exited with non-zero exit value"
-    )
+    // We must execute the Wrapper twice to regenerate the scripts correctly.
+    // The first call could fail on Windows (because the bat is overwritten during execution).
+    process
+      .Process(cmd, referenceDir.toFile)
+      .run()
+      .exitValue()
+    require(process
+              .Process(cmd, referenceDir.toFile)
+              .run()
+              .exitValue() == 0,
+            "gradlew wrapper exited with non-zero exit value")
   }
 
   val isWindows: Boolean =

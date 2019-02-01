@@ -3,11 +3,15 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'cz.augi:gradle-wartremover:0.9.3'
-        classpath 'cz.alenkacz:gradle-scalafmt:1.6.0'
-        classpath 'cz.augi:gradle-docker-java:1.6.0'
-        classpath 'com.avast.gradle:gradle-docker-compose-plugin:0.7.1'
+        classpath 'cz.augi:gradle-wartremover:0.9.6'
+        classpath 'cz.alenkacz:gradle-scalafmt:1.7.2'
+        classpath 'cz.augi:gradle-docker-java:1.7.0'
+        classpath 'com.avast.gradle:gradle-docker-compose-plugin:0.8.13'
     }
+}
+
+plugins {
+    id 'com.github.ben-manes.versions' version '0.20.0'
 }
 
 apply plugin: 'scala'
@@ -28,16 +32,16 @@ repositories {
 }
 
 dependencies {
-    compile 'org.scala-lang:scala-library:2.12.6'
-    compile 'com.typesafe.scala-logging:scala-logging_2.12:3.9.0'
+    compile 'org.scala-lang:scala-library:2.12.8'
+    compile 'com.typesafe.scala-logging:scala-logging_2.12:3.9.2'
     compile 'ch.qos.logback:logback-classic:1.2.3'
-    compile 'com.github.scopt:scopt_2.12:3.7.0'
+    compile 'com.github.scopt:scopt_2.12:3.7.1'
 
-    compile 'com.softwaremill.sttp:core_2.12:1.1.14'
-    compile 'io.circe:circe-parser_2.12:0.9.3'
-    compile 'io.circe:circe-generic_2.12:0.9.3'
+    compile 'com.softwaremill.sttp:core_2.12:1.5.8'
+    compile 'io.circe:circe-parser_2.12:0.11.1'
+    compile 'io.circe:circe-generic_2.12:0.11.1'
 
-    compile 'org.gitlab4j:gitlab4j-api:4.8.20'
+    compile 'org.gitlab4j:gitlab4j-api:4.9.14'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.scalatest:scalatest_2.12:3.0.5'

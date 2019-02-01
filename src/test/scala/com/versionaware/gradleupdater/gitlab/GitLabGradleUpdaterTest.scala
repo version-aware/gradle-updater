@@ -12,13 +12,13 @@ import scala.collection.JavaConverters._
 class GitLabGradleUpdaterTest extends IntegrationSpec {
 
   it must "detect missing Gradle Wrapper for empty project" in { f =>
-    val target       = new GitLabGradleUpdater(f.api, GradleVersion("4.6"), None)
+    val target       = new GitLabGradleUpdater(f.api, GradleVersion("4.10.3"), None)
     val emptyProject = f.api.getProjectApi.createProject(new Project().withPath("empty"))
     target.tryUpdate(emptyProject) shouldBe GradleWrapperNotDetected
   }
 
   it must "do nothing for up-to-date project" in { f =>
-    val toUpdateVersion  = GradleVersion("4.6")
+    val toUpdateVersion  = GradleVersion("4.10.3")
     val distributionType = GradleDistributionType.Bin
     val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, Some(distributionType))
     val p                = createProject(f.api, toUpdateVersion, distributionType)
@@ -26,7 +26,7 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
   }
 
   it must "detect archived project" in { f =>
-    val toUpdateVersion = GradleVersion("4.6")
+    val toUpdateVersion = GradleVersion("4.10.3")
     val target          = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
     val p               = f.api.getProjectApi.createProject(new Project().withPath("project-to-archive"))
     val archivedProject = f.api.getProjectApi.archiveProject(p.getId)
@@ -34,7 +34,7 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
   }
 
   it must "detect project without merge requests enabled" in { f =>
-    val toUpdateVersion = GradleVersion("4.6")
+    val toUpdateVersion = GradleVersion("4.10.3")
     val target          = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
     val p = f.api.getProjectApi
       .createProject(new Project().withPath("test-project").withMergeRequestsEnabled(false))
@@ -44,15 +44,15 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
   Seq("", "subdir").foreach(subDir => {
     it must s"update the project in '$subDir'" in {
       f =>
-        val toUpdateVersion  = GradleVersion("4.6")
+        val toUpdateVersion  = GradleVersion("4.10.3")
         val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
         val distributionType = GradleDistributionType.Bin
-        val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType, subDir)
+        val p                = createProject(f.api, GradleVersion("4.8"), distributionType, subDir)
         target.tryUpdate(p) match {
           case Updated(mr, Seq(result)) =>
             result shouldBe GitLabDirectoryResult.Updated(subDir)
             val newFile = f.api.getRepositoryFileApi
-              .getFile(s"$subDir/gradle/wrapper/gradle-wrapper.properties", p.getId, mr.getSourceBranch)
+              .getFile(p.getId, s"$subDir/gradle/wrapper/gradle-wrapper.properties", mr.getSourceBranch)
             new String(Base64.getDecoder.decode(newFile.getContent)) should include(
               GradleDistributionUrlProvider(toUpdateVersion)
                 .get(distributionType)
@@ -64,10 +64,10 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
   })
 
   it must "return UpdateBranchAlreadyExists after it was updated" in { f =>
-    val toUpdateVersion  = GradleVersion("4.6")
+    val toUpdateVersion  = GradleVersion("4.10.3")
     val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
     val distributionType = GradleDistributionType.Bin
-    val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType)
+    val p                = createProject(f.api, GradleVersion("4.8"), distributionType)
     target.tryUpdate(p) match {
       case _: Updated =>
       case other      => fail(s"Updated result expected but $other found")
@@ -76,10 +76,10 @@ class GitLabGradleUpdaterTest extends IntegrationSpec {
   }
 
   it must "detected outdated project in dry-run" in { f =>
-    val toUpdateVersion  = GradleVersion("4.6")
+    val toUpdateVersion  = GradleVersion("4.10.3")
     val target           = new GitLabGradleUpdater(f.api, toUpdateVersion, None)
     val distributionType = GradleDistributionType.Bin
-    val p                = createProject(f.api, GradleVersion("4.5.1"), distributionType)
+    val p                = createProject(f.api, GradleVersion("4.8"), distributionType)
     target.tryUpdateDryRun(p) shouldBe WouldBeUpdated(Seq(GitLabDirectoryResult.WouldBeUpdated("")))
   }
 

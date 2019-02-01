@@ -113,8 +113,8 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
 
   private def getDirectoryStatus(project: Project, path: String): DirectoryStatus = {
     val propertiesFile = gitLabApi.getRepositoryFileApi.getFile(
-      s"$path/gradle/wrapper/gradle-wrapper.properties",
       project.getId,
+      s"$path/gradle/wrapper/gradle-wrapper.properties",
       Option(project.getDefaultBranch).getOrElse("master"))
     extractDistributionUrl(propertiesFile) match {
       case Some(currentDistributionUrl) =>

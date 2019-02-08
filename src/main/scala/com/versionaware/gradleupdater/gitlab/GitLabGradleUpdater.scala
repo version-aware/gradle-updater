@@ -145,13 +145,22 @@ class GitLabGradleUpdater(gitLabApi: GitLabApi,
                        action: CommitAction.Action): Seq[CommitAction] =
     gradleWrapperFiles
       .get(distributionType)
-      .map(
-        f =>
+      .flatMap(f => {
+        val filePath = dir.stripSuffix("/") + "/" + f.path.iterator().asScala.mkString("/")
+        Seq(
           new CommitAction()
             .withAction(action)
-            .withFilePath(dir.stripSuffix("/") + "/" + f.path.iterator().asScala.mkString("/"))
+            .withFilePath(filePath)
             .withEncoding(CommitAction.Encoding.BASE64)
-            .withContent(Base64.getEncoder.encodeToString(f.content)))
+            .withContent(Base64.getEncoder.encodeToString(f.content))) ++
+          (if (f.executable)
+             Seq(
+               new CommitAction()
+                 .withAction(CommitAction.Action.CHMOD)
+                 .withFilePath(filePath)
+                 .withExecuteFilemode(true))
+           else Seq.empty)
+      })
 
   private def createMergeRequestIfRequired(project: Project,
                                            dirs: Seq[DirectoryStatus]): Option[MergeRequest] = {

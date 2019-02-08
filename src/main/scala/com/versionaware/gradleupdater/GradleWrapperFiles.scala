@@ -37,15 +37,15 @@ class GradleWrapperFiles(gradleVersion: GradleVersion) {
   def get(t: GradleDistributionType): Seq[GradleWrapperFile] = t match {
     case All =>
       Seq(
-        GradleWrapperFile(Paths.get("gradlew"), gradlew),
-        GradleWrapperFile(Paths.get("gradlew.bat"), gradlewBat),
+        GradleWrapperFile(Paths.get("gradlew"), gradlew, executable = true),
+        GradleWrapperFile(Paths.get("gradlew.bat"), gradlewBat, executable = true),
         GradleWrapperFile(Paths.get("gradle", "wrapper", "gradle-wrapper.jar"), jar),
         GradleWrapperFile(Paths.get("gradle", "wrapper", "gradle-wrapper.properties"), allProperties)
       )
     case Bin =>
       Seq(
-        GradleWrapperFile(Paths.get("gradlew"), gradlew),
-        GradleWrapperFile(Paths.get("gradlew.bat"), gradlewBat),
+        GradleWrapperFile(Paths.get("gradlew"), gradlew, executable = true),
+        GradleWrapperFile(Paths.get("gradlew.bat"), gradlewBat, executable = true),
         GradleWrapperFile(Paths.get("gradle", "wrapper", "gradle-wrapper.jar"), jar),
         GradleWrapperFile(Paths.get("gradle", "wrapper", "gradle-wrapper.properties"), binProperties)
       )
@@ -53,4 +53,4 @@ class GradleWrapperFiles(gradleVersion: GradleVersion) {
 
 }
 
-case class GradleWrapperFile(path: Path, content: Array[Byte])
+case class GradleWrapperFile(path: Path, content: Array[Byte], executable: Boolean = false)

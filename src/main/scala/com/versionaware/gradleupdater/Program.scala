@@ -124,7 +124,7 @@ object Program extends StrictLogging {
     val gitLabApi     = createGitLabApi(cmdArgs)
     val gradleUpdater = new GitLabGradleUpdater(gitLabApi, gradleVersion, cmdArgs.gradleDistribution)
     val failedProjects = gitLabApi.getProjectApi
-      .getProjects(0, Integer.MAX_VALUE)
+      .getProjects()
       .asScala
       .filter(p => {
         val toProcess = cmdArgs.gitlabFilter.forall(_.asPredicate().test(p.getPathWithNamespace))
